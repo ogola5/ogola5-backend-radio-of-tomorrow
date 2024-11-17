@@ -1,99 +1,23 @@
-import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
+from flask import Flask
+from personalized import personalized_bp
+from genai import genai_bp
+from flask_cors import CORS
+from dotenv import load_dotenv
+import os
 
-# Spotify API Setup
-client_id = 'fbb92e3854ed4ba29a14c463527043b3'
-client_secret = '22d68a75ed7147edbcb68126cf5ee08f'
+# Load environment variables
+load_dotenv()
 
-# client_credentials_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-# sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+app = Flask(__name__)
+CORS(app)
 
-# # Fetch Music Data
-# track_ids = ['6rqhFgbbKwnb9MLmUQDhG6', '1r9xUipOqoNwggBpENDsvJ', '5CQ30WqJwcep0pYcV4AMNc']
-# audio_features = sp.audio_features(track_ids)
+# Register blueprints
+app.register_blueprint(personalized_bp, url_prefix='/personalized')
+app.register_blueprint(genai_bp, url_prefix='/genai')
 
-# # Hardcode User Preferences
-# user_preferences = {
-#     'preferred_genres': ['rock', 'pop'],
-#     'desired_mood': 'energetic',
-#     'preferred_tempo': 120  # BPM
-# }
+@app.route('/')
+def home():
+    return {"message": "Welcome to the main application"}
 
-# # Implement Matching Algorithm
-# def match_preferences(audio_features, user_preferences):
-#     matched_tracks = []
-#     for features in audio_features:
-#         if features is not None:
-#             # Adjust the thresholds as needed
-#             if features['energy'] > 0.3 and features['tempo'] > 100:
-#                 matched_tracks.append(features)
-#     return matched_tracks
-
-# matched_tracks = match_preferences(audio_features, user_preferences)
-
-# # Create Playlist
-# playlist = []
-
-# for track in matched_tracks:
-#     track_info = sp.track(track['id'])
-#     playlist.append({
-#         'name': track_info['name'],
-#         'artist': track_info['artists'][0]['name'],
-#         'album': track_info['album']['name'],
-#         'duration_ms': track_info['duration_ms']
-#     })
-
-# # Print the playlist
-# print("Playlist:", playlist)
-# import spotipy
-# from spotipy.oauth2 import SpotifyClientCredentials
-
-# # 1. Spotify API Setup (Replace with your credentials)
-# client_id = 'YOUR_SPOTIFY_CLIENT_ID'
-# client_secret = 'YOUR_SPOTIFY_CLIENT_SECRET'
-
-# import spotipy
-# from spotipy.oauth2 import SpotifyClientCredentials
-
-# # 1. Spotify API Setup (Replace with your credentials)
-# client_id = 'YOUR_SPOTIFY_CLIENT_ID'
-# client_secret = 'YOUR_SPOTIFY_CLIENT_SECRET'
-
-client_credentials_manager = SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
-
-# 2. Fetch Music Data
-track_ids = ['6rqhFgbbKwnb9MLmUQDhG6', '1r9xUipOqoNwggBpENDsvJ', '5CQ30WqJwcep0pYcV4AMNc'] 
-audio_features = sp.audio_features(track_ids)
-print("Audio Features:", audio_features)  # Debug print
-
-# 3. Hardcode User Preferences
-user_preferences = {
-    'preferred_genres': ['rock', 'pop'],
-    'desired_mood': 'energetic',
-    'preferred_tempo': 100  # BPM (adjusted)
-}
-
-# 4. Implement Matching Algorithm (Using Valence and Danceability)
-def match_preferences(audio_features, user_preferences):
-    matched_tracks = []
-    for features in audio_features:
-        if features is not None and features['valence'] >= 0.7 and features['danceability'] >= 0.6:  # New logic
-            matched_tracks.append(features)
-    return matched_tracks
-
-matched_tracks = match_preferences(audio_features, user_preferences)
-print("Matched Tracks:", matched_tracks)  # Debug print
-
-# 5. Create Playlist
-playlist = []
-for track in matched_tracks:
-    track_info = sp.track(track['id'])
-    playlist.append({
-        'name': track_info['name'],
-        'artist': track_info['artists'][0]['name'],
-        # ... other relevant information
-    })
-
-# Print the playlist
-print("Playlist:", playlist)
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

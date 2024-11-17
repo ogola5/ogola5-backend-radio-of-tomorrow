@@ -1,20 +1,21 @@
-
 import requests
 import random
-from flask import Flask, request, jsonify
+from flask import Blueprint, request, jsonify
 from flask_cors import CORS
+from dotenv import load_dotenv
+import os
 
-app = Flask(__name__)
-CORS(app)
+# Create a blueprint
+personalized_bp = Blueprint('personalized', __name__)
+CORS(personalized_bp)
 
-# Your YouTube API Key
-YOUTUBE_API_KEY = 'AIzaSyBhMwQPvUaMS6TX8H4pmj5h47gFtqBf0wc'
+# Load environment variables from .env file
+load_dotenv()
 
-# OpenWeatherMap API Key
-WEATHER_API_KEY = '8cdcbdf16a18b6390bbc5b12748bd047'
-
-# OpenCage Geocoder API Key
-OPENCAGE_API_KEY = 'ea80bb199bf54ff29c7c231952675be9'
+# API keys
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+WEATHER_API_KEY = os.getenv('WEATHER_API_KEY')
+OPENCAGE_API_KEY = os.getenv('OPENCAGE_API_KEY')
 
 # Function to get weather data from OpenWeatherMap API
 def get_weather(city):
@@ -23,20 +24,15 @@ def get_weather(city):
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        weather_description = data['weather'][0]['description']
-        return weather_description
+        return data['weather'][0]['description']
     except requests.exceptions.RequestException as e:
-        print(f"Error fetching weather data: {str(e)}")
+        print(f"Error fetching weather data: {e}")
         return "Unable to fetch weather data"
 
-# Function to get city information using OpenCage Geocoder API
+# Function to get city details using OpenCage Geocoder API
 def get_city_details(city):
     url = f"https://api.opencagedata.com/geocode/v1/json"
-    params = {
-        'q': city,
-        'key': OPENCAGE_API_KEY,
-        'limit': 1
-    }
+    params = {'q': city, 'key': OPENCAGE_API_KEY, 'limit': 1}
     try:
         response = requests.get(url, params=params)
         response.raise_for_status()
@@ -50,11 +46,9 @@ def get_city_details(city):
                 'latitude': city_info['geometry']['lat'],
                 'longitude': city_info['geometry']['lng']
             }
-        else:
-            print(f"No city details found for '{city}'")
-            return None
+        return None
     except requests.exceptions.RequestException as e:
-        print(f"Error during request for city details: {str(e)}")
+        print(f"Error fetching city details: {e}")
         return None
 
 # Function to curate music based on weather, time of day, and feeling
@@ -157,49 +151,41 @@ def search_youtube(video_title):
         print(f"Error searching YouTube for '{video_title}': {str(e)}")
         return None
 
-@app.route('/get-music', methods=['POST'])
-def get_music():
-    try:
-        data = request.json
-        city = data.get('city', 'New York')
-        time_of_day = data.get('time_of_day', 'morning')
-        feeling = data.get('feeling', 'happy')
+def init_routes(bp):
+    @bp.route('/get-music', methods=['POST'])
+    def get_music():
+        try:
+            data = request.json
+            city = data.get('city', 'New York')
+            time_of_day = data.get('time_of_day', 'morning')
+            feeling = data.get('feeling', 'happy')
 
-        weather = get_weather(city)
-        city_info = get_city_details(city)
-        
-        music_list = curate_music(weather, time_of_day, feeling)
-        phrase = generate_phrase(feeling, weather)
+            weather = get_weather(city)
+            city_info = get_city_details(city)
+            music_list = curate_music(weather, time_of_day, feeling)
+            phrase = generate_phrase(feeling, weather)
 
-        youtube_links = []
-        for track in music_list:
-            link = search_youtube(track)
-            if link:
-                youtube_links.append(link)
+            youtube_links = [search_youtube(track) for track in music_list if search_youtube(track)]
 
-        return jsonify({
-            'weather': weather,
-            'city_info': city_info,
-            'curated_music': music_list,
-            'youtube_links': youtube_links,
-            'motivational_phrase': phrase
-        })
-    except Exception as e:
-        print(f"Error processing request: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+            return jsonify({
+                'weather': weather,
+                'city_info': city_info,
+                'curated_music': music_list,
+                'youtube_links': youtube_links,
+                'motivational_phrase': phrase
+            })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
-@app.route('/feedback', methods=['POST'])
-def feedback():
-    try:
-        data = request.json
-        music_track = data.get('music_track', '')
-        reaction = data.get('reaction', '')
+    @bp.route('/feedback', methods=['POST'])
+    def feedback():
+        try:
+            data = request.json
+            music_track = data.get('music_track', '')
+            reaction = data.get('reaction', '')
+            print(f"Feedback for {music_track}: {reaction}")
+            return jsonify({'message': 'Feedback received, thank you!'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
-        print(f"Feedback for {music_track}: {reaction}")
-        return jsonify({'message': 'Feedback received, thank you!'})
-    except Exception as e:
-        print(f"Error processing feedback: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True)
+init_routes(personalized_bp)
